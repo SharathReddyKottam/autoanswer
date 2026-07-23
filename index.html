@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>BA Interview Cue Card — Hands-Free</title>
+  <style>
+    :root{
+      --bg:#0d1117; --panel:#161b22; --panel2:#1c2230; --line:#2a3140;
+      --text:#e8edf5; --muted:#8b97a8; --accent:#4c8dff; --accent2:#1f6feb;
+      --green:#2ea043; --red:#e5484d; --amber:#d29922;
+      --tele:#f5f8ff;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;height:100%}
+    body{
+      background:var(--bg); color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      display:flex; flex-direction:column; height:100vh; overflow:hidden;
+    }
+    header{
+      display:flex; align-items:center; gap:12px; padding:12px 16px; flex-wrap:wrap;
+      background:var(--panel); border-bottom:1px solid var(--line); flex:0 0 auto;
+    }
+    header h1{font-size:16px; margin:0; font-weight:700; letter-spacing:.2px}
+    header .sub{color:var(--muted); font-size:12px}
+    .dot{width:11px;height:11px;border-radius:50%;background:#555;flex:0 0 auto;transition:.3s}
+    .dot.live{background:var(--green); box-shadow:0 0 0 0 rgba(46,160,67,.7); animation:pulse 1.6s infinite}
+    .dot.paused{background:var(--amber)}
+    .dot.err{background:var(--red)}
+    @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(46,160,67,.6)}70%{box-shadow:0 0 0 10px rgba(46,160,67,0)}100%{box-shadow:0 0 0 0 rgba(46,160,67,0)}}
+    .spacer{flex:1}
+    button{
+      font:inherit; cursor:pointer; border:1px solid var(--line); background:var(--panel2);
+      color:var(--text); padding:8px 13px; border-radius:8px; font-size:13px; font-weight:600;
+      transition:.15s; white-space:nowrap;
+    }
+    button:hover{border-color:var(--accent)}
+    button.primary{background:var(--green); border-color:var(--green); color:#fff}
+    button.danger{background:var(--red); border-color:var(--red); color:#fff}
+    button:disabled{opacity:.4; cursor:not-allowed}
+    .iconbtn{padding:8px 11px}
+
+    main{flex:1; display:flex; min-height:0}
+    .stage{flex:1; display:flex; flex-direction:column; min-width:0; padding:20px 28px}
+    .qlabel{
+      color:var(--accent); font-size:15px; font-weight:700; text-transform:uppercase;
+      letter-spacing:.5px; margin-bottom:8px; min-height:20px;
+    }
+    .answer{
+      flex:1; overflow-y:auto; color:var(--tele); line-height:1.5; font-weight:500;
+      font-size:34px; padding-right:8px; scroll-behavior:smooth; -webkit-overflow-scrolling:touch;
+    }
+    .answer.placeholder{color:var(--muted); font-weight:400; display:flex; align-items:center; justify-content:center; text-align:center; font-size:23px}
+    .answer::-webkit-scrollbar{width:10px}
+    .answer::-webkit-scrollbar-thumb{background:#2a3140;border-radius:8px}
+    .heard{
+      flex:0 0 auto; margin-top:12px; padding-top:10px; border-top:1px solid var(--line);
+      color:var(--muted); font-size:13px; min-height:20px; font-style:italic;
+    }
+    .heard b{color:var(--text); font-style:normal}
+
+    aside{
+      width:340px; flex:0 0 auto; background:var(--panel); border-left:1px solid var(--line);
+      display:flex; flex-direction:column; min-height:0;
+    }
+    .tabs{display:flex; border-bottom:1px solid var(--line)}
+    .tab{flex:1; text-align:center; padding:11px; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent}
+    .tab.active{color:var(--text); border-bottom-color:var(--accent)}
+    .panel{flex:1; overflow-y:auto; padding:14px; display:none}
+    .panel.active{display:block}
+    .search{width:100%; padding:9px 11px; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--text); font:inherit; margin-bottom:8px}
+    .catbar{display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px}
+    .catbtn{font-size:11px; padding:4px 9px; border-radius:20px; border:1px solid var(--line); background:var(--bg); color:var(--muted); cursor:pointer}
+    .catbtn.active{background:var(--accent); border-color:var(--accent); color:#fff}
+    .qitem{padding:9px 11px; border-radius:8px; border:1px solid transparent; cursor:pointer; font-size:13px; line-height:1.35; color:var(--text)}
+    .qitem:hover{background:var(--panel2); border-color:var(--line)}
+    .qitem.cur{background:rgba(76,141,255,.14); border-color:var(--accent)}
+    .qitem .tag{font-size:10px; color:var(--accent); text-transform:uppercase; letter-spacing:.5px; display:block; margin-bottom:2px}
+    .count{color:var(--muted); font-size:11px; margin-bottom:8px}
+    textarea{width:100%; height:calc(100% - 150px); min-height:200px; resize:none; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--text); font:13px/1.5 ui-monospace,Menlo,Consolas,monospace; padding:11px}
+    .hint{color:var(--muted); font-size:12px; line-height:1.5; margin:0 0 10px}
+    .row{display:flex; gap:8px; margin-top:10px}
+    .row button{flex:1}
+    .fontctrl{display:flex; align-items:center; gap:6px}
+    .fontctrl span{color:var(--muted); font-size:12px; min-width:42px; text-align:center}
+    .banner{background:var(--amber); color:#000; padding:8px 16px; font-size:12.5px; font-weight:600; text-align:center; display:none}
+    .banner.show{display:block}
+    code{background:var(--panel2); padding:1px 5px; border-radius:4px; font-size:12px}
+    @media(max-width:820px){ aside{width:290px} .stage{padding:16px 18px} }
+  </style>
+</head>
+<body>
+<div class="banner" id="banner"></div>
+<header>
+  <div class="dot" id="dot"></div>
+  <div>
+    <h1>BA Cue Card <span class="sub">· hands-free</span></h1>
+    <div class="sub" id="statusText">Idle — press Start Listening</div>
+  </div>
+  <div class="spacer"></div>
+  <div class="fontctrl">
+    <button class="iconbtn" id="fontDown" title="Smaller">A−</button>
+    <span id="fontVal">34px</span>
+    <button class="iconbtn" id="fontUp" title="Bigger">A+</button>
+  </div>
+  <button class="iconbtn" id="prevBtn" title="Previous (←)">‹ Prev</button>
+  <button class="iconbtn" id="nextBtn" title="Next (→)">Next ›</button>
+  <button class="primary" id="startBtn">▶ Start Listening</button>
+  <button class="danger" id="stopBtn" disabled>■ Stop</button>
+</header>
+
+<main>
+  <section class="stage">
+    <div class="qlabel" id="qlabel"></div>
+    <div class="answer placeholder" id="answer">Press <b>Start Listening</b> and ask a question — or tap one from the list.<br>The matching answer appears here for you to read aloud.</div>
+    <div class="heard" id="heard">Not listening yet.</div>
+  </section>
+
+  <aside>
+    <div class="tabs">
+      <div class="tab active" data-tab="list">Library</div>
+      <div class="tab" data-tab="paste">Paste Q&amp;A</div>
+    </div>
+    <div class="panel active" id="panel-list">
+      <input class="search" id="search" placeholder="Search terms & questions…" />
+      <div class="catbar" id="catbar"></div>
+      <div class="count" id="count"></div>
+      <div id="qlist"></div>
+    </div>
+    <div class="panel" id="panel-paste">
+      <p class="hint">Add your own Q&amp;A, one block each:<br>
+        <code>Q: your question</code><br><code>A: your answer</code><br>
+        Blank line between blocks. Loading <b>replaces</b> the current set.</p>
+      <textarea id="pasteBox" placeholder="Q: What is a BRD?&#10;A: A Business Requirements Document...&#10;&#10;Q: ...&#10;A: ..."></textarea>
+      <div class="row">
+        <button id="loadBtn">Load Q&amp;A</button>
+        <button id="resetBtn">Reset to full library</button>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<script>
+  /* ============================================================
+     BA CUE CARD — knowledge base + personal interview answers.
+     cat  = category (shown as a tag / filter).
+     keys = distinctive trigger phrases (multi-word = strong match).
+     Written from a senior-BA (10 yrs) point of view: practical, plain.
+     Edit [bracketed] bits with your real details before practising.
+  ============================================================ */
+  const DEFAULT_QA = [
+
+    /* ---------- INTERVIEW (your personal answers) ---------- */
+    {cat:"Interview", q:"Tell me about yourself",
+      keys:["tell me about yourself","about yourself","introduce yourself","walk me through your background"],
+      a:"So I've been in financial services about three years now. Right now I'm a BA at JP Morgan, sitting between four business teams and a dev squad. What I've figured out is the job isn't really writing requirements — it's catching problems before they turn into rework. I started out documenting what people asked for, but I've moved into pushing back and figuring out what they actually need. That's really why this Product Owner role caught my eye."},
+    {cat:"Interview", q:"Why Morgan Stanley, and why this role?",
+      keys:["why morgan stanley","why this role","why do you want this","why are you interested"],
+      a:"A couple of reasons. One, the AI thing — a lot of firms just slap AI on as a gimmick, but Morgan Stanley built it into how advisors work, and it stuck. That's real product work. And two, this role is about doing that at the process level — automation, GenAI, that whole space. I want to be on the team deciding what's worth automating, not just building whatever comes down the pipe."},
+    {cat:"Interview", q:"Why move from JP Morgan so soon?",
+      keys:["why move so soon","why are you leaving","why leave jp morgan","why are you looking","leaving already"],
+      a:"Yeah, fair question. JP Morgan's been great — I'd make the same call again. But my role there is pretty BA-heavy, and I'm at my best when I own the why, not just the what. This is a real Product Owner role in exactly the area I want to go deep in. And just so you know, I do commit — LTIMindtree was a year and a half of building something that lasted."},
+    {cat:"Interview", q:"Work authorization — do you need sponsorship?",
+      keys:["work authorization","authorized to work","sponsorship","visa","work permit","need sponsorship","opt","h1b","h-1b"],
+      a:"[Sure — I'm on STEM OPT through [date], and I'd need H-1B sponsorship down the line.]  Say it plainly and move on."},
+    {cat:"Interview", q:"Can you work in Purchase, NY / relocate?",
+      keys:["purchase new york","relocate","relocation","work on-site","onsite","are you willing to move","commute"],
+      a:"Yeah, totally fine — happy to relocate. I actually think being on-site helps for this kind of role. So much of it is building trust with business and tech folks, and that happens faster face to face."},
+    {cat:"Interview", q:"Notice period / when can you start?",
+      keys:["notice period","when can you start","start date","how soon can you","earliest you can start"],
+      a:"I'd need about two to three weeks to wrap up cleanly. I wouldn't want to leave my current team in a bad spot — which hopefully tells you how I'd treat yours too."},
+    {cat:"Interview", q:"Compensation expectations?",
+      keys:["compensation","salary","expectations on pay","how much are you looking","comp expectations"],
+      a:"I'm comfortable in the range you've posted. I'm way more focused on the role and the team than on squeezing a number — if the fit's right, that part usually sorts itself out."},
+    {cat:"Interview", q:"What's your greatest strength?",
+      keys:["greatest strength","your strength","strongest suit","what are you best at"],
+      a:"Probably translation. If the business and the engineers are talking past each other, I'm the person who gets everyone to a shared, written definition of done. That's most of the job, and it's the thing I'm quietly really good at."},
+    {cat:"Interview", q:"What's a weakness you're improving?",
+      keys:["weakness","area you're improving","area of improvement","something you're working on"],
+      a:"I used to over-polish documentation. Being precise is great until it slows the team down. So I've taught myself to ship a requirement when it's clear enough, not perfect, and trust people to ask if something's off."},
+    {cat:"Interview", q:"Are you interviewing anywhere else?",
+      keys:["interviewing anywhere else","other interviews","other offers","interviewing elsewhere"],
+      a:"A couple of conversations going, nothing at the final stage. I'll be straight with you though — this is my top choice, and if it feels mutual I'd move fast."},
+    {cat:"Interview", q:"Do you have any questions for me?",
+      keys:["any questions for me","do you have questions","questions for us","anything you want to ask"],
+      a:"Six months in, what would make you say this hire really worked out — and what would make you say it didn't?  ·  Where's the team losing the most time to stuff automation hasn't reached yet?  ·  How do you decide what NOT to automate?"},
+
+    /* ---------- BA DOCUMENTS & ARTIFACTS ---------- */
+    {cat:"Docs", q:"What is a BRD (Business Requirements Document)?",
+      keys:["what is a brd","business requirements document","brd"],
+      a:"A BRD captures the business needs and the why behind a project — objectives, scope, high-level requirements, stakeholders, success criteria. It's written in business language, no technical detail. It's the anchor everyone signs off on before design starts."},
+    {cat:"Docs", q:"What is an FRD (Functional Requirements Document)?",
+      keys:["what is an frd","functional requirements document","frd"],
+      a:"An FRD describes what the system must do to meet the business need — the functional behavior, inputs, outputs, and rules. It's derived from the BRD and hands the developers something concrete to build."},
+    {cat:"Docs", q:"BRD vs FRD — what's the difference?",
+      keys:["brd vs frd","difference between brd and frd","brd and frd"],
+      a:"BRD = the business need and why, in business language. FRD = how the system fulfills it, in functional detail. BRD says 'customers need to reset their own passwords'; FRD says 'the system shall send a reset link valid for 30 minutes.'"},
+    {cat:"Docs", q:"Functional vs non-functional requirements?",
+      keys:["functional and non functional","non functional requirements","functional requirements","functional vs non functional"],
+      a:"Functional = what the system does (a feature, a behavior). Non-functional = how well it does it — performance, security, scalability, usability, availability. Functional is 'user can log in'; non-functional is 'login responds in under two seconds.'"},
+    {cat:"Docs", q:"What is a user story?",
+      keys:["what is a user story","user story"],
+      a:"A short, plain-language description of a feature from the user's point of view: 'As a [role], I want [goal], so that [benefit].' It's the unit of work in agile — small, valuable, and testable, with acceptance criteria attached."},
+    {cat:"Docs", q:"What are acceptance criteria?",
+      keys:["acceptance criteria","what is acceptance criteria"],
+      a:"The conditions a user story must meet to be considered done — the testable definition of success. I usually write them Given/When/Then. They remove ambiguity so a developer and a tester read the story the same way."},
+    {cat:"Docs", q:"What is INVEST for user stories?",
+      keys:["invest criteria","what is invest","invest"],
+      a:"A checklist for a good story: Independent, Negotiable, Valuable, Estimable, Small, Testable. If a story fails one of those — say it's too big to estimate — that's your signal to split or refine it."},
+    {cat:"Docs", q:"What is a use case?",
+      keys:["what is a use case","use case"],
+      a:"A structured description of how an actor interacts with the system to achieve a goal, including the main flow plus alternate and exception flows. It's more detailed than a user story — good when the logic and edge cases matter."},
+    {cat:"Docs", q:"User story vs use case?",
+      keys:["user story vs use case","story vs use case"],
+      a:"A user story is short, agile, and centered on user value — a conversation starter. A use case is a fuller step-by-step of the interaction including exceptions. Stories for agile delivery; use cases when you need the detailed flow documented."},
+    {cat:"Docs", q:"Epic vs feature vs user story?",
+      keys:["epic vs story","feature vs story","what is an epic","epic feature story"],
+      a:"An epic is a large body of work that's too big for one sprint. It breaks down into features, and features break down into user stories that fit in a sprint. It's just levels of granularity, big to small."},
+    {cat:"Docs", q:"What is an RTM (Requirements Traceability Matrix)?",
+      keys:["what is an rtm","traceability matrix","requirements traceability","rtm"],
+      a:"A grid that links every requirement to its design, code, and test cases. It proves nothing got dropped and everything got tested. When a requirement changes, it also shows you exactly what's impacted downstream."},
+    {cat:"Docs", q:"Definition of Done vs Definition of Ready?",
+      keys:["definition of done","definition of ready","dod","dor"],
+      a:"Definition of Ready = the criteria a story must meet before it enters a sprint — clear acceptance criteria, estimated, no blockers. Definition of Done = the checklist to call it complete — coded, tested, reviewed, documented. Ready gates the start, Done gates the finish."},
+    {cat:"Docs", q:"What is an MVP (Minimum Viable Product)?",
+      keys:["what is an mvp","minimum viable product","mvp"],
+      a:"The smallest version you can release that delivers real value and lets you validate your biggest assumption with the least effort. The point isn't 'cheap and incomplete' — it's learning fast before you over-invest."},
+
+    /* ---------- AGILE & SCRUM ---------- */
+    {cat:"Agile", q:"Agile vs Waterfall?",
+      keys:["agile vs waterfall","difference between agile and waterfall","agile and waterfall"],
+      a:"Waterfall is sequential — you lock scope up front and move phase to phase. Agile is iterative — you deliver in small increments and adapt as you learn. Waterfall suits fixed, well-understood scope; agile suits evolving requirements."},
+    {cat:"Agile", q:"What are the Scrum ceremonies?",
+      keys:["scrum ceremonies","scrum events","agile ceremonies","scrum meetings"],
+      a:"Four main ones: Sprint Planning (commit to the sprint), Daily Standup (sync and surface blockers), Sprint Review (demo to stakeholders), and Retrospective (improve how we work). Backlog refinement runs continuously alongside them."},
+    {cat:"Agile", q:"What is a sprint?",
+      keys:["what is a sprint","sprint length"],
+      a:"A fixed timebox, usually one to four weeks, in which the team delivers a potentially shippable increment. The scope is committed at planning and protected during the sprint so the team can focus."},
+    {cat:"Agile", q:"Product backlog vs sprint backlog?",
+      keys:["product backlog","sprint backlog","backlog difference"],
+      a:"The product backlog is the full, prioritized list of everything the product might need, owned by the PO. The sprint backlog is just the slice the team committed to for the current sprint. One is the whole menu, the other is tonight's order."},
+    {cat:"Agile", q:"What is backlog grooming / refinement?",
+      keys:["backlog grooming","backlog refinement","grooming session"],
+      a:"The ongoing work of keeping the backlog healthy — clarifying items, adding acceptance criteria, estimating, reprioritizing, and splitting big items so the top of the backlog is always sprint-ready. It's how you avoid chaos at planning."},
+    {cat:"Agile", q:"What are story points and velocity?",
+      keys:["story points","velocity","estimation points"],
+      a:"Story points are a relative estimate of effort and complexity, not hours — usually a Fibonacci scale. Velocity is how many points a team completes per sprint on average, which you use to forecast how much you can take on."},
+    {cat:"Agile", q:"What is a burndown chart?",
+      keys:["burndown chart","burn down"],
+      a:"A chart showing remaining work against time in the sprint. If the line is tracking above the ideal, you're behind; below, you're ahead. It's an early-warning signal, not a scorecard."},
+    {cat:"Agile", q:"What is Kanban?",
+      keys:["what is kanban","kanban"],
+      a:"A flow-based method — you visualize work on a board, limit work-in-progress so nothing piles up, and pull the next item when you have capacity. No fixed sprints; it's continuous delivery, good for support and ops-style work."},
+    {cat:"Agile", q:"Scrum roles — who does what?",
+      keys:["scrum roles","product owner role","scrum master","who does what in scrum"],
+      a:"Product Owner owns the backlog and maximizes value — decides what and why. Scrum Master facilitates the process and removes blockers. The Development Team owns how it's built. As a BA/PO I usually live closest to the Product Owner side."},
+    {cat:"Agile", q:"What are the 'Three Amigos'?",
+      keys:["three amigos"],
+      a:"Before a story is built, the three perspectives — business/BA, developer, and tester — review it together to align on scope and acceptance criteria. It catches gaps and misreads early, when they're cheap to fix."},
+
+    /* ---------- ELICITATION & ANALYSIS ---------- */
+    {cat:"Analysis", q:"What requirement elicitation techniques do you use?",
+      keys:["elicitation techniques","requirement elicitation","gathering techniques","how do you elicit"],
+      a:"Interviews and workshops like JAD for depth, observation to see how work really happens, document analysis of existing processes, surveys for breadth, and prototyping when people can't articulate what they want until they see it. I pick the mix based on the stakeholders and the risk."},
+    {cat:"Analysis", q:"What is a JAD session?",
+      keys:["jad session","joint application","what is jad"],
+      a:"Joint Application Development — a facilitated workshop that puts business stakeholders and technical people in one room to define requirements together, fast. It compresses weeks of back-and-forth and surfaces conflicts while everyone's present to resolve them."},
+    {cat:"Analysis", q:"What is gap analysis?",
+      keys:["gap analysis","what is a gap analysis"],
+      a:"Comparing the current state to the desired future state to identify exactly what's missing and needs to change. The 'gaps' become your requirements. It keeps a project grounded in a real delta rather than a wish list."},
+    {cat:"Analysis", q:"As-is vs to-be?",
+      keys:["as is to be","as-is to-be","as is vs to be"],
+      a:"As-is is how the process works today, warts and all. To-be is the improved future state you're designing toward. Mapping both makes the change concrete and gives you the gap analysis in between."},
+    {cat:"Analysis", q:"What is MoSCoW prioritization?",
+      keys:["moscow prioritization","moscow","what is moscow"],
+      a:"A way to prioritize requirements into Must have, Should have, Could have, and Won't have this time. It forces stakeholders to be honest about what's truly essential versus nice-to-have — especially useful under a deadline."},
+    {cat:"Analysis", q:"What is a RACI matrix?",
+      keys:["raci matrix","what is raci","raci"],
+      a:"A grid that clarifies roles on each task or decision: Responsible does the work, Accountable owns the outcome, Consulted gives input, Informed is kept in the loop. It kills the 'I thought you had it' problem."},
+    {cat:"Analysis", q:"What is stakeholder analysis?",
+      keys:["stakeholder analysis","stakeholder mapping","power interest"],
+      a:"Identifying everyone affected by a project, then assessing their influence and interest — often on a power-interest grid — so you know who to engage closely, who to keep informed, and who can make or break sign-off."},
+    {cat:"Analysis", q:"What is a SWOT analysis?",
+      keys:["swot analysis","what is swot","swot"],
+      a:"A strategic snapshot across four quadrants: Strengths and Weaknesses (internal), Opportunities and Threats (external). BAs use it early to frame whether and how to pursue an initiative."},
+    {cat:"Analysis", q:"Root cause analysis — 5 Whys and Fishbone?",
+      keys:["root cause analysis","5 whys","five whys","fishbone","ishikawa"],
+      a:"Techniques to get past symptoms to the real cause. 5 Whys — you keep asking 'why' until you hit the root, usually about five layers down. Fishbone (Ishikawa) — you map possible causes into categories like people, process, tools. You fix the cause, not the symptom."},
+    {cat:"Analysis", q:"What is impact analysis?",
+      keys:["impact analysis","what is impact analysis"],
+      a:"Before you commit to a change, you assess its ripple effects — which systems, processes, teams, and other requirements it touches. It's how you avoid a 'small tweak' quietly breaking three other things and blowing up the sprint."},
+    {cat:"Analysis", q:"What is a cost-benefit analysis / ROI?",
+      keys:["cost benefit analysis","cost-benefit","roi","return on investment"],
+      a:"Weighing the total expected costs of an initiative against its expected benefits to justify the spend. It underpins the business case and the ROI — if the benefit doesn't clearly beat the cost, the project shouldn't get greenlit."},
+    {cat:"Analysis", q:"What is a feasibility study?",
+      keys:["feasibility study","is it feasible"],
+      a:"An early check on whether an initiative is viable across a few angles — technical (can we build it?), economic (is it worth it?), operational (will it fit how we work?), and schedule. It stops you sinking effort into something that was never going to fly."},
+    {cat:"Analysis", q:"What is a WBS (Work Breakdown Structure)?",
+      keys:["work breakdown structure","wbs"],
+      a:"Decomposing a project into smaller, manageable deliverables and tasks in a hierarchy. It makes scope visible, improves estimating, and stops big vague projects from hiding work."},
+
+    /* ---------- MODELING & DIAGRAMS ---------- */
+    {cat:"Modeling", q:"What is BPMN?",
+      keys:["bpmn","business process model"],
+      a:"Business Process Model and Notation — a standardized visual language for mapping business processes: tasks, decisions, gateways, and swimlanes for who does what. Because it's standard, both business and tech read it the same way."},
+    {cat:"Modeling", q:"What is a data flow diagram (DFD)?",
+      keys:["data flow diagram","dfd"],
+      a:"A diagram of how data moves through a system — the processes that transform it, the stores that hold it, and the flows between them and external entities. Great for showing where data comes from and goes, without code detail."},
+    {cat:"Modeling", q:"What is an ERD (Entity Relationship Diagram)?",
+      keys:["entity relationship","erd","er diagram"],
+      a:"A model of the data entities in a system and how they relate — one-to-many, many-to-many, and so on. It's the blueprint the database design comes from, and it helps the BA reason about the data before build."},
+    {cat:"Modeling", q:"Wireframe vs mockup vs prototype?",
+      keys:["wireframe","mockup","prototype","wireframe vs mockup"],
+      a:"Increasing fidelity: a wireframe is a rough low-detail layout of structure; a mockup adds the visual design but is static; a prototype is clickable and interactive. You use the cheapest one that gets you the feedback you need."},
+    {cat:"Modeling", q:"What is UML?",
+      keys:["what is uml","uml"],
+      a:"Unified Modeling Language — a standard set of diagrams for modeling systems, including use case, activity, sequence, and class diagrams. As a BA I lean on use case and activity diagrams most."},
+    {cat:"Modeling", q:"Activity vs sequence diagram?",
+      keys:["activity diagram","sequence diagram","activity vs sequence"],
+      a:"An activity diagram shows the flow of a process or logic, including decisions and parallel paths — like a flowchart. A sequence diagram shows how components or actors interact over time, message by message. Flow versus interaction."},
+    {cat:"Modeling", q:"What is a persona?",
+      keys:["what is a persona","persona"],
+      a:"A fictional but research-based profile of a representative user — their goals, context, and frustrations. It keeps the team designing for a real person instead of a vague 'user,' and settles debates by asking what that persona would need."},
+    {cat:"Modeling", q:"What is a user journey map?",
+      keys:["user journey","journey map"],
+      a:"A visual of the user's end-to-end experience across touchpoints, showing what they do, think, and feel — and where the pain points are. It's how you spot the moments worth fixing or automating."},
+
+    /* ---------- DATA & TECH LITERACY ---------- */
+    {cat:"Data/Tech", q:"What is the SDLC?",
+      keys:["sdlc","software development life cycle"],
+      a:"The Software Development Life Cycle — the phases a system goes through: requirements, design, development, testing, deployment, and maintenance. Agile and waterfall are just different ways of moving through it."},
+    {cat:"Data/Tech", q:"What is the V-model?",
+      keys:["v model","v-model"],
+      a:"A variation of waterfall where every development phase has a matching test phase planned alongside it — requirements pair with acceptance testing, design with integration testing. Testing is designed in from the start rather than bolted on at the end."},
+    {cat:"Data/Tech", q:"What is SQL and why does a BA need it?",
+      keys:["what is sql","sql basics","why sql"],
+      a:"SQL is the language for querying relational databases — SELECT, WHERE, JOIN, GROUP BY. For a BA it means you can pull and validate data yourself, check assumptions, and profile the data behind a requirement instead of waiting on someone."},
+    {cat:"Data/Tech", q:"Explain SQL joins (inner, left, right, full).",
+      keys:["sql joins","inner join","left join","types of joins"],
+      a:"An inner join returns only rows that match in both tables. A left join returns all rows from the left table plus matches from the right. A right join is the mirror. A full join returns everything from both, matched where possible."},
+    {cat:"Data/Tech", q:"What is database normalization?",
+      keys:["normalization","database normalization","normal form"],
+      a:"Organizing data to reduce redundancy and keep it consistent, in stages — 1NF, 2NF, 3NF. The idea is each fact lives in one place, so updates don't create contradictions. BAs care because it shapes how data is structured and queried."},
+    {cat:"Data/Tech", q:"What is an API?",
+      keys:["what is an api","api"],
+      a:"An Application Programming Interface — a defined way for two systems to talk, sending a request and getting a structured response, commonly over REST. As a BA I don't build them, but I need to understand what data flows in and out."},
+    {cat:"Data/Tech", q:"What does CRUD mean?",
+      keys:["crud","what is crud"],
+      a:"The four basic operations on data: Create, Read, Update, Delete. Most system requirements around records boil down to which of these a given user is allowed to do."},
+    {cat:"Data/Tech", q:"KPI vs metric?",
+      keys:["kpi vs metric","what is a kpi","kpi and metric"],
+      a:"A metric is any measurement. A KPI is a metric tied directly to a key business goal — the vital few you actually steer by. All KPIs are metrics; most metrics aren't KPIs."},
+    {cat:"Data/Tech", q:"UAT vs SIT vs regression testing?",
+      keys:["uat vs sit","system integration testing","regression testing","types of testing"],
+      a:"SIT checks that integrated components work together. UAT is the business validating the system against their real needs before go-live. Regression re-checks that new changes didn't break existing functionality. Different questions: does it integrate, does it meet the need, did we break anything."},
+    {cat:"Data/Tech", q:"How do you approach requirements gathering?",
+      keys:["requirements gathering","gather requirements","how do you gather","requirement gathering"],
+      a:"I treat what people ask for as a starting point, not the answer — people describe solutions, not problems. So I dig back to the real need, map current and future state, write acceptance criteria clear enough a developer can't read them two ways, and check for conflicts early. A good requirement is the one nobody has to come back and ask about."},
+    {cat:"Data/Tech", q:"Tell me about your UAT / testing experience.",
+      keys:["uat experience","testing experience","how do you test","user acceptance testing"],
+      a:"I tie everything to a traceability matrix, so every requirement links to a test — nothing ships untested, nothing gets tested that nobody asked for. That's how I've held zero defects. And I always run a quick lessons-learned after a release, because not repeating last month's mistake is the cheapest win you'll get."},
+
+    /* ---------- SITUATIONAL / BEHAVIORAL ---------- */
+    {cat:"Situational", q:"How do you handle scope creep?",
+      keys:["scope creep","handle scope creep"],
+      a:"First, a clear baselined scope everyone signed off on, so creep is visible. Then every new ask goes through change control — I run impact analysis on cost, timeline, and risk, and let the sponsor decide with eyes open. Saying 'yes, and here's what it costs' beats a quiet 'yes' every time."},
+    {cat:"Situational", q:"What if requirements change mid-sprint?",
+      keys:["requirements change mid sprint","changing requirements","change mid sprint"],
+      a:"I protect the sprint goal first. I assess the impact, and unless it's genuinely critical, it goes to the top of the next sprint rather than disrupting this one. If it truly can't wait, I renegotiate the sprint with the PO and team openly — I don't just inject it."},
+    {cat:"Situational", q:"How do you handle unclear or ambiguous requirements?",
+      keys:["unclear requirements","ambiguous requirements","handle ambiguity","vague requirements"],
+      a:"I don't build on guesses. I go back and elicit more — ask why, give a prototype or example to react to, and document my assumptions explicitly so they get challenged. Playing the requirement back to the stakeholder in my own words usually surfaces the gap fast."},
+    {cat:"Situational", q:"How do you handle conflicting stakeholders?",
+      keys:["conflicting stakeholders","stakeholder conflict","stakeholders disagree","difficult stakeholder","conflicting requirements"],
+      a:"I get the competing needs on the table and reframe it around business value instead of opinions. I use impact analysis and data to show trade-offs objectively, and prioritize against the business goal. If it's a genuine deadlock, I escalate to the sponsor with a clear recommendation, not just the problem."},
+    {cat:"Situational", q:"How do you prioritize under a tight deadline?",
+      keys:["tight deadline","limited time","prioritize under pressure","how do you prioritize"],
+      a:"MoSCoW — I get ruthless about Must-haves versus everything else, and I cut scope, not quality. Then I make the trade-offs visible to stakeholders early so the deadline is met with a smaller, solid release rather than a bigger, broken one."},
+    {cat:"Situational", q:"A requirement was missed and found in UAT — what do you do?",
+      keys:["missed requirement","found in uat","requirement missed","defect in uat"],
+      a:"First, log it and assess impact and priority calmly — not everything found in UAT is a launch blocker. Decide fix-now versus backlog with the PO. Then a quick root-cause pass: was it an elicitation gap or a traceability gap, so it doesn't happen again. Own it, don't hide it."},
+    {cat:"Situational", q:"What if you disagree with a developer on a solution?",
+      keys:["disagree with developer","developer pushback","developer disagrees"],
+      a:"I start by understanding their concern — usually it's feasibility or effort, and they're often right. I keep the conversation on the business goal, not my preferred solution, and we find the option that meets the need at reasonable cost. Then I document the decision so it's not relitigated."},
+    {cat:"Situational", q:"How do you manage a difficult or disengaged stakeholder?",
+      keys:["difficult stakeholder to manage","disengaged stakeholder","uncooperative stakeholder","stakeholder won't engage"],
+      a:"I try to understand what's driving it — often they've been burned before or don't see what's in it for them. I build trust by communicating in their terms, involving them early so they feel ownership, and showing progress with data. People engage when they believe it's actually theirs."},
+    {cat:"Situational", q:"Tell me about a project you're proud of.",
+      keys:["project you're proud","proud of","biggest accomplishment","a project you led"],
+      a:"At LTIMindtree I pulled transaction data and market feeds into one warehouse. The part I'm proud of is what I did before writing anything — I sat with three business teams and asked them to walk me through how they work today, instead of asking what they wanted. We shipped with zero defects, and the analysis on top fed real expansion decisions. When you build off how people actually work, it holds."}
+  ];
+
+  /* ============================================================
+     MATCHING ENGINE
+  ============================================================ */
+  const STOP_WORDS = new Set(("a an the of to in on for and or but is are was were be been do does did you your yours " +
+          "me my i we our us they them he she it that this these those with about at as by from into over youre " +
+          "how what why when where which who whom can could would should will shall may might have has had im ive explain tell").split(/\s+/));
+
+  function normalize(s){ return (s||"").toLowerCase().replace(/[^a-z0-9\s']/g," ").replace(/\s+/g," ").trim(); }
+  function tokens(s){ return normalize(s).split(" ").filter(w=>w && !STOP_WORDS.has(w)); }
+
+  function buildKeys(entry){
+    const phrases = [], words = new Set();
+    (entry.keys||[]).forEach(k=>{ const nk=normalize(k); if(nk.includes(" ")) phrases.push(nk); else if(nk) words.add(nk); });
+    tokens(entry.q).forEach(w=>words.add(w));
+    return {phrases, words};
+  }
+
+  const STOP_COMMANDS = ["stop the session","stop session","end the session","end session","stop the interview","stop listening","stop the practice"];
+
+  function scoreEntry(normT, tset, keyset){
+    let score=0, phraseHit=false;
+    for(const p of keyset.phrases){ if(normT.includes(p)){ score+=3; phraseHit=true; } }
+    let wordHits=0;
+    for(const w of keyset.words){ if(tset.has(w)) wordHits++; }
+    score+=wordHits;
+    return {score, phraseHit, wordHits};
+  }
+
+  /* ============================================================
+     STATE + UI
+  ============================================================ */
+  let QA = DEFAULT_QA.map(e=>({...e,_keys:buildKeys(e)}));
+  let recog=null, running=false, wantRun=false;
+  let currentIndex=-1, lastSwitch=0, activeCat="All";
+  const SWITCH_DEBOUNCE=900, MIN_SCORE=3;
+
+  const el = id => document.getElementById(id);
+  const dot=el("dot"), statusText=el("statusText"), answerEl=el("answer"),
+          qlabel=el("qlabel"), heard=el("heard"), qlist=el("qlist"),
+          startBtn=el("startBtn"), stopBtn=el("stopBtn"), banner=el("banner"),
+          prevBtn=el("prevBtn"), nextBtn=el("nextBtn"), stage=document.querySelector(".stage");
+
+  /* ---- Mode detection ---- */
+  const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+          (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+  const hasSpeech = !!(window.SpeechRecognition||window.webkitSpeechRecognition);
+  let touchMode = isiOS || !hasSpeech;   // touch helpers on; voice buttons STAY visible so you can try iPad
+
+  function goTo(i){ if(i<0) i=QA.length-1; if(i>=QA.length) i=0; showAnswer(i,true); }
+  function next(){ goTo(currentIndex<0?0:currentIndex+1); }
+  function prev(){ goTo(currentIndex<0?QA.length-1:currentIndex-1); }
+  prevBtn.onclick=prev; nextBtn.onclick=next;
+
+  document.addEventListener("keydown",e=>{
+    if(e.target.tagName==="TEXTAREA"||e.target.tagName==="INPUT") return;
+    if(e.key==="ArrowRight"){ next(); e.preventDefault(); }
+    else if(e.key==="ArrowLeft"){ prev(); e.preventDefault(); }
+  });
+
+  /* swipe + tap-to-advance (touch) — tap only advances when NOT actively listening */
+  let _tx=0,_ty=0;
+  stage.addEventListener("touchstart",e=>{ const t=e.changedTouches[0]; _tx=t.clientX; _ty=t.clientY; },{passive:true});
+  stage.addEventListener("touchend",e=>{
+    const t=e.changedTouches[0], dx=t.clientX-_tx, dy=t.clientY-_ty;
+    if(Math.abs(dx)>50 && Math.abs(dx)>Math.abs(dy)){ dx<0?next():prev(); }
+    else if(Math.abs(dx)<12 && Math.abs(dy)<12 && touchMode && !running){ next(); }
+  },{passive:true});
+
+  function applyMode(){
+    if(touchMode){
+      showBanner("iPad / Safari: hands-free voice is unreliable here, so Start/Stop are available to TRY, and you can also tap the answer, use Next ›, swipe, or the list. Fully hands-free works best in Chrome on desktop.");
+      setStatus("paused","Touch mode — tap Next, pick a question, or try Start Listening.");
+    }
+  }
+
+  /* ---- font ---- */
+  let fontSize=34;
+  function applyFont(){ answerEl.style.fontSize=fontSize+"px"; el("fontVal").textContent=fontSize+"px"; }
+  el("fontUp").onclick=()=>{ fontSize=Math.min(80,fontSize+3); applyFont(); };
+  el("fontDown").onclick=()=>{ fontSize=Math.max(16,fontSize-3); applyFont(); };
+
+  function showBanner(m){ banner.textContent=m; banner.classList.add("show"); }
+  function hideBanner(){ banner.classList.remove("show"); }
+
+  /* ---- category chips ---- */
+  function renderCats(){
+    const cats=["All",...Array.from(new Set(QA.map(e=>e.cat||"Other")))];
+    const bar=el("catbar"); bar.innerHTML="";
+    cats.forEach(c=>{
+      const b=document.createElement("div");
+      b.className="catbtn"+(c===activeCat?" active":"");
+      b.textContent=c;
+      b.onclick=()=>{ activeCat=c; renderCats(); renderList(el("search").value); };
+      bar.appendChild(b);
+    });
+  }
+
+  function renderList(filter=""){
+    const f=normalize(filter);
+    qlist.innerHTML=""; let shown=0;
+    QA.forEach((e,i)=>{
+      if(activeCat!=="All" && (e.cat||"Other")!==activeCat) return;
+      if(f && !normalize(e.q).includes(f) && !normalize(e.a).includes(f)) return;
+      shown++;
+      const d=document.createElement("div");
+      d.className="qitem"+(i===currentIndex?" cur":"");
+      d.innerHTML='<span class="tag">'+(e.cat||"Other")+'</span>'+e.q;
+      d.onclick=()=>showAnswer(i,true);
+      qlist.appendChild(d);
+    });
+    el("count").textContent=shown+" of "+QA.length+" cards";
+  }
+
+  function showAnswer(i, manual){
+    if(i<0||i>=QA.length) return;
+    currentIndex=i; lastSwitch=Date.now();
+    const e=QA[i];
+    qlabel.textContent=(e.cat?e.cat+" · ":"")+e.q;
+    answerEl.classList.remove("placeholder");
+    answerEl.textContent=e.a;
+    answerEl.scrollTop=0;
+    renderList(el("search").value);
+    if(manual) heard.innerHTML='Showing: <b>'+e.q+'</b>';
+  }
+
+  function setStatus(state,text){ dot.className="dot"+(state?(" "+state):""); statusText.textContent=text; }
+
+  function handleTranscript(raw){
+    const normT=normalize(raw);
+    if(!normT) return;
+    heard.innerHTML='Heard: <b>'+raw.trim()+'</b>';
+    for(const c of STOP_COMMANDS){ if(normT.includes(c)){ stop(); setStatus("paused","Stopped by voice command."); return; } }
+    const tset=new Set(tokens(raw));
+    let best=-1, bestScore=0;
+    QA.forEach((e,i)=>{
+      const r=scoreEntry(normT,tset,e._keys);
+      const ok=r.phraseHit || r.score>=MIN_SCORE;
+      if(ok && r.score>bestScore){ best=i; bestScore=r.score; }
+    });
+    if(best===-1) return;
+    if(best===currentIndex) return;
+    if(Date.now()-lastSwitch<SWITCH_DEBOUNCE) return;
+    showAnswer(best,false);
+  }
+
+  function start(){
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SR){ showBanner("Speech recognition isn't available in this browser. Use Chrome on desktop, or drive it by tapping questions / Next ›."); return; }
+    hideBanner();
+    recog=new SR();
+    recog.continuous=true; recog.interimResults=true; recog.lang="en-US"; recog.maxAlternatives=1;
+    recog.onstart=()=>{ running=true; setStatus("live","Listening… ask a question."); startBtn.disabled=true; stopBtn.disabled=false; };
+    recog.onerror=(ev)=>{
+      if(ev.error==="not-allowed"||ev.error==="service-not-allowed"){
+        wantRun=false; setStatus("err","Mic blocked — allow access and retry."); showBanner("Microphone access denied. Allow the mic for this page and press Start again.");
+        startBtn.disabled=false; stopBtn.disabled=true;
+      } else if(ev.error==="network"){ setStatus("err","Network error — speech needs internet."); }
+    };
+    recog.onresult=(ev)=>{ let txt=""; for(let i=ev.resultIndex;i<ev.results.length;i++){ txt+=ev.results[i][0].transcript; } handleTranscript(txt); };
+    recog.onend=()=>{
+      running=false;
+      if(wantRun){ try{ recog.start(); }catch(e){ setTimeout(()=>{ if(wantRun) try{recog.start()}catch(_){}} ,300); } }
+      else { setStatus("paused","Stopped."); startBtn.disabled=false; stopBtn.disabled=true; }
+    };
+    wantRun=true;
+    try{ recog.start(); }catch(e){}
+  }
+
+  function stop(){
+    wantRun=false;
+    if(recog){ try{ recog.stop(); }catch(e){} }
+    setStatus("paused","Stopped."); startBtn.disabled=false; stopBtn.disabled=true;
+    heard.innerHTML='Session ended.';
+  }
+
+  startBtn.onclick=start; stopBtn.onclick=stop;
+
+  /* ---- tabs ---- */
+  document.querySelectorAll(".tab").forEach(t=>{
+    t.onclick=()=>{
+      document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+      document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));
+      t.classList.add("active"); el("panel-"+t.dataset.tab).classList.add("active");
+    };
+  });
+  el("search").oninput=e=>renderList(e.target.value);
+
+  /* ---- paste ---- */
+  function parsePaste(text){
+    const blocks=text.split(/\n\s*\n/), out=[];
+    blocks.forEach(b=>{
+      const qm=b.match(/Q:\s*([\s\S]*?)(?:\n\s*A:|$)/i), am=b.match(/A:\s*([\s\S]*)$/i);
+      if(qm&&am){ const q=qm[1].trim(), a=am[1].trim(); if(q&&a) out.push({cat:"Custom",q,keys:[],a}); }
+    });
+    return out;
+  }
+  el("loadBtn").onclick=()=>{
+    const parsed=parsePaste(el("pasteBox").value);
+    if(!parsed.length){ showBanner("Couldn't parse any Q:/A: blocks. Check the format."); return; }
+    hideBanner();
+    QA=parsed.map(e=>({...e,_keys:buildKeys(e)}));
+    currentIndex=-1; activeCat="All"; renderCats(); renderList();
+    answerEl.classList.add("placeholder"); answerEl.innerHTML="Loaded <b>"+QA.length+"</b> of your own Q&amp;A."; qlabel.textContent="";
+  };
+  el("resetBtn").onclick=()=>{
+    QA=DEFAULT_QA.map(e=>({...e,_keys:buildKeys(e)}));
+    currentIndex=-1; activeCat="All"; renderCats(); renderList();
+    answerEl.classList.add("placeholder"); answerEl.innerHTML="Reset to the full BA library ("+QA.length+" cards)."; qlabel.textContent="";
+  };
+
+  /* ---- init ---- */
+  applyFont(); renderCats(); renderList(); applyMode();
+</script>
+</body>
+</html>
