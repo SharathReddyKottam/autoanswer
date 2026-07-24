@@ -199,6 +199,12 @@
     {cat:"Interview", q:"Why move from JP Morgan so soon?",
       keys:["why move so soon","why are you leaving","why leave jp morgan","why are you looking","leaving already"],
       a:"Yeah, fair question. JP Morgan's been great — I'd make the same call again. But my role there is pretty BA-heavy, and I'm at my best when I own the why, not just the what. This is a real Product Owner role in exactly the area I want to go deep in. And just so you know, I do commit — LTIMindtree was a year and a half of building something that lasted."},
+    {cat:"Interview", q:"Walk me through your day-to-day at JP Morgan.",
+      keys:["day to day","day-to-day","your current role","what do you do at jp morgan","typical day","walk me through your day","experience at jp morgan"],
+      a:"So day to day it's JAD sessions, writing user stories, running the backlog, supporting UAT. But the real work is triage — what goes in the sprint, and honestly what doesn't. The thing I care most about is catching conflicts early, before we commit, because the worst bug is the one you build perfectly to a requirement that was wrong. I also built some Tableau dashboards so people could just glance and see where things stood."},
+    {cat:"Interview", q:"Tell me about your experience at LTIMindtree.",
+      keys:["experience at lti","lti mindtree","ltimindtree","at lti","time at lti","worked at lti"],
+      a:"I was a BA there for about a year and a half, in India. The big project was consolidating transaction data and market feeds into a single data warehouse — I interviewed stakeholders across three business units before writing requirements, kept an RTM through delivery, and we shipped every release with zero defects. I also automated reporting in Power BI and Excel, which cut manual effort by about twenty percent. It's where I learned my fundamentals properly."},
     {cat:"Interview", q:"Work authorization — do you need sponsorship?",
       keys:["work authorization","authorized to work","sponsorship","visa","work permit","need sponsorship","opt","h1b","h-1b"],
       a:"[Sure — I'm on STEM OPT through [date], and I'd need H-1B sponsorship down the line.]  Say it plainly and move on."},
@@ -639,18 +645,39 @@
 
   function setStatus(state,text){ dot.className="dot"+(state?(" "+state):""); statusText.textContent=text; }
 
+  /* --- asking vs answering detection --- */
+  const Q_LEADS=["what","whats","what's","why","how","when","where","who","which","tell me","walk me","take me through","describe","explain","define","can you","could you","do you","did you","have you","are you","would you","give me","talk about","share","difference","compare"];
+  function looksLikeQuestion(t){
+    const s=normalize(t);
+    if(s.split(" ").length<2) return false;
+    return Q_LEADS.some(k=>s.startsWith(k)) || /(^| )(vs|versus)( |$)/.test(s);
+  }
+  /* if most heard words are in the answer currently on screen, the user is reading it aloud */
+  function isEchoOfCurrent(raw){
+    if(currentIndex<0) return false;
+    const ansTok=new Set(canonTokens(QA[currentIndex].a));
+    const ht=canonTokens(raw);
+    if(ht.length<3) return false;
+    let hit=0; ht.forEach(w=>{ if(ansTok.has(w)) hit++; });
+    return hit/ht.length>0.55;
+  }
+
   function handleTranscript(raw){
     const normRaw=normalize(raw);
     if(!normRaw) return;
     heard.innerHTML='Heard: <b>'+raw.trim()+'</b>';
     for(const c of STOP_COMMANDS){ if(normRaw.includes(c)){ stop(); setStatus("paused","Stopped by voice command."); return; } }
+
+    /* 1) reading the current answer aloud? -> stay put */
+    if(isEchoOfCurrent(raw)){ heard.innerHTML='Heard: <b>'+raw.trim()+'</b> <span style="color:var(--muted)">— (you\'re answering; holding this card)</span>'; return; }
+
     const cT=canon(raw);
     const tset=new Set(cT.split(" ").filter(w=>w && !STOP_WORDS.has(w)));
-    let best=-1, bestScore=0;
+    let best=-1, bestScore=0, bestPhrase=false;
     QA.forEach((e,i)=>{
       const r=scoreEntry(cT,tset,e._keys);
       const ok=r.phraseHit || r.score>=MIN_SCORE;
-      if(ok && r.score>bestScore){ best=i; bestScore=r.score; }
+      if(ok && r.score>bestScore){ best=i; bestScore=r.score; bestPhrase=r.phraseHit; }
     });
     if(best===-1){
       if(tset.size>=2) heard.innerHTML='Heard: <b>'+raw.trim()+'</b> <span style="color:var(--amber)">— no match; say the term, or tap it in the list.</span>';
@@ -658,6 +685,12 @@
     }
     if(best===currentIndex) return;
     if(Date.now()-lastSwitch<SWITCH_DEBOUNCE) return;
+
+    /* 2) only switch for question-shaped speech, or a very strong direct phrase hit */
+    if(!looksLikeQuestion(raw) && !(bestPhrase && bestScore>=5)){
+      heard.innerHTML='Heard: <b>'+raw.trim()+'</b> <span style="color:var(--muted)">— (didn\'t sound like a question; holding)</span>';
+      return;
+    }
     showAnswer(best,false);
   }
 

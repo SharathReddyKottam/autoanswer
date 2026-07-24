@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>BA Interview AI — Gemini</title>
+    <style>
+        :root{
+            --bg:#0d1117; --panel:#161b22; --panel2:#1c2230; --line:#2a3140;
+            --text:#e8edf5; --muted:#8b97a8; --accent:#4c8dff; --green:#2ea043;
+            --red:#e5484d; --amber:#d29922; --tele:#f5f8ff;
+        }
+        *{box-sizing:border-box}
+        html,body{margin:0;height:100%}
+        body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+        header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line);flex:0 0 auto;flex-wrap:wrap}
+        header h1{font-size:15px;margin:0;font-weight:700}
+        .sub{color:var(--muted);font-size:12px}
+        .dot{width:11px;height:11px;border-radius:50%;background:#555;flex:0 0 auto;transition:.3s}
+        .dot.live{background:var(--green);animation:pulse 1.6s infinite}
+        .dot.think{background:var(--accent);animation:pulse .9s infinite}
+        .dot.paused{background:var(--amber)} .dot.err{background:var(--red)}
+        @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(76,141,255,.55)}70%{box-shadow:0 0 0 9px rgba(76,141,255,0)}100%{box-shadow:0 0 0 0 rgba(76,141,255,0)}}
+        .spacer{flex:1}
+        button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:8px 13px;border-radius:8px;font-size:13px;font-weight:600;transition:.15s;white-space:nowrap}
+        button:hover{border-color:var(--accent)}
+        button.primary{background:var(--green);border-color:var(--green);color:#fff}
+        button.danger{background:var(--red);border-color:var(--red);color:#fff}
+        button:disabled{opacity:.4;cursor:not-allowed}
+        .iconbtn{padding:8px 11px}
+        main{flex:1;display:flex;flex-direction:column;min-height:0;padding:18px 26px}
+        .qlabel{color:var(--accent);font-size:15px;font-weight:700;margin-bottom:8px;min-height:20px}
+        .answer{flex:1;overflow-y:auto;color:var(--tele);line-height:1.5;font-weight:500;font-size:32px;padding-right:6px;-webkit-overflow-scrolling:touch;white-space:pre-wrap}
+        .answer.placeholder{color:var(--muted);font-weight:400;font-size:21px}
+        .answer::-webkit-scrollbar{width:10px}.answer::-webkit-scrollbar-thumb{background:#2a3140;border-radius:8px}
+        .cursor{display:inline-block;width:.55ch;background:var(--accent);animation:blink 1s steps(1) infinite;color:transparent}
+        @keyframes blink{50%{opacity:0}}
+        .heard{flex:0 0 auto;margin-top:10px;padding-top:9px;border-top:1px solid var(--line);color:var(--muted);font-size:13px;min-height:18px;font-style:italic}
+        .heard b{color:var(--text);font-style:normal}
+        .askbar{display:flex;gap:8px;padding:10px 14px;background:var(--panel);border-top:1px solid var(--line);flex:0 0 auto}
+        .askbar input{flex:1;padding:11px 13px;border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--text);font:inherit;font-size:15px}
+        /* settings drawer */
+        .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:.25s;z-index:45}
+        .overlay.show{opacity:1;pointer-events:auto}
+        .drawer{position:fixed;top:0;right:0;height:100%;width:92%;max-width:440px;background:var(--panel);border-left:1px solid var(--line);transform:translateX(103%);transition:transform .25s;z-index:50;display:flex;flex-direction:column;box-shadow:-14px 0 40px rgba(0,0,0,.6)}
+        .drawer.open{transform:translateX(0)}
+        .drawer .dhead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
+        .drawer .dbody{padding:16px;overflow-y:auto}
+        label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:14px 0 6px}
+        input[type=password],input[type=text],select,textarea{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--text);font:inherit}
+        textarea{min-height:220px;resize:vertical;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace}
+        .note{color:var(--muted);font-size:12px;line-height:1.5;margin:8px 0}
+        .row{display:flex;gap:8px;margin-top:14px}.row button{flex:1}
+        a{color:var(--accent)}
+        .fontctrl{display:flex;align-items:center;gap:5px}.fontctrl span{color:var(--muted);font-size:12px;min-width:40px;text-align:center}
+        .banner{background:var(--amber);color:#000;padding:8px 14px;font-size:12.5px;font-weight:600;text-align:center;display:none}
+        .banner.show{display:block}
+        @media(max-width:700px){
+            main{padding:14px 15px} .answer{font-size:26px} header h1{font-size:14px}
+            .fontctrl span{display:none}
+        }
+    </style>
+</head>
+<body>
+<div class="banner" id="banner"></div>
+<header>
+    <div class="dot" id="dot"></div>
+    <div>
+        <h1>BA Interview AI <span class="sub">· Gemini</span></h1>
+        <div class="sub" id="statusText">Set your key in ⚙ to begin</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="fontctrl">
+        <button class="iconbtn" id="fontDown">A−</button><span id="fontVal">36px</span><button class="iconbtn" id="fontUp">A+</button>
+    </div>
+    <button class="iconbtn" id="setBtn" title="Settings">⚙</button>
+    <button class="primary" id="micBtn">▶ Start</button>
+</header>
+
+<main>
+    <div class="qlabel" id="qlabel"></div>
+    <div class="answer placeholder" id="answer">Ask a question by voice, or type one below. Gemini answers in your voice, streamed live for you to read.</div>
+    <div class="heard" id="heard">Idle.</div>
+</main>
+
+<div class="askbar">
+    <input id="askInput" placeholder="Type a question and press Enter (works everywhere, incl. iPad)…" />
+    <button class="primary" id="askBtn">Ask</button>
+</div>
+
+<div class="overlay" id="overlay"></div>
+<div class="drawer" id="drawer">
+    <div class="dhead"><b>Settings</b><button class="iconbtn" id="closeSet">✕</button></div>
+    <div class="dbody">
+        <label>Worker URL (recommended — no key on device)</label>
+        <input type="text" id="workerInput" placeholder="https://your-worker.your-name.workers.dev" autocomplete="off" />
+        <div class="note">If set, the app calls your Cloudflare Worker and the key stays in the Worker's env — nothing to enter per device. Leave empty to use a local key below instead.</div>
+
+        <label>Google Gemini API key (only if no Worker URL)</label>
+        <input type="password" id="keyInput" placeholder="paste your key (AIza…)" autocomplete="off" />
+        <div class="note">Free key from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>. Stored only in this browser (localStorage) — never uploaded, never in the repo. Don't use on a shared computer.</div>
+
+        <label>Model</label>
+        <select id="modelSelect">
+            <option value="gemini-2.0-flash">gemini-2.0-flash (fast, free tier)</option>
+            <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite (fastest/cheapest)</option>
+            <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+        </select>
+
+        <label>About me / grounding context</label>
+        <div class="note">The AI answers from this. Edit freely — add real dates, metrics, projects. The more accurate this is, the better the answers.</div>
+        <textarea id="ctxInput"></textarea>
+
+        <label>Only answer question-shaped speech</label>
+        <div class="note">When ON (recommended for hands-free), it only reacts to speech that sounds like a question, so it ignores you reading answers aloud.</div>
+        <select id="filterSelect"><option value="on">On — ignore my answer-reading</option><option value="off">Off — treat all speech as a question</option></select>
+
+        <div class="row"><button class="primary" id="saveSet">Save</button><button id="clearKey">Clear key</button></div>
+    </div>
+</div>
+
+<script>
+    /* ================= grounding context (editable in settings) ================= */
+    const DEFAULT_CONTEXT = `You are answering interview questions AS Sharath Chandra Reddy Kottam, in the first person, in a natural spoken voice. Keep answers concise and teleprompter-friendly (usually 3-6 sentences). Sound like a confident senior Business Analyst / Product Owner, not a textbook. Ground every answer in the facts below; never invent employers, titles, dates, or metrics that aren't here. For general BA concept questions (BRD, Agile, SQL, etc.), answer as a knowledgeable senior BA. If asked something personal that isn't covered, give a brief, reasonable answer consistent with this profile.
+
+PROFILE
+- ~3 years in financial services / banking as a Business Analyst & Product Owner.
+- Current: Business Analyst, JP Morgan Chase (March 2025 - present). Platform modernization initiative. Liaison across 4 departments. Runs JAD sessions, impact analysis, writes user stories + acceptance criteria, owns the Jira backlog end-to-end (sprint planning, prioritization), supports UAT, built Tableau dashboards for KPI visibility. Uses JP Morgan's internal GenAI tool "LLM Suite" (consumer tools like ChatGPT aren't allowed) to speed up documentation and draft user stories.
+- Previous: Business Analyst, LTIMindtree, India (Feb 2022 - July 2023). Consolidated transaction data + market feeds into a single data warehouse; interviewed stakeholders across 3 business units; maintained an RTM; shipped releases with zero defects; automated reporting in Power BI/Excel (cut manual effort ~20%); wrote BRDs; gap analysis that informed expansion decisions.
+- Education: Master's in Information Systems, George Mason University (the 2023-2025 gap = this degree). Bachelor's in Computer Science & Engineering, JNTU Hyderabad.
+- Work authorization: STEM OPT, authorized through Aug 2028; would need H-1B sponsorship in future.
+- Location: Virginia; fully open to relocating to Purchase, NY; comfortable hybrid or on-site.
+- Applying for: Wealth Management Strategic Solutions (WMSS) Product Owner / Business Analyst, Associate at Morgan Stanley — a transformation team doing workflow automation, GenAI/Agentic AI, and intelligent document processing.
+- Strength: translating between business and technology to a shared definition of done. Weakness being improved: used to over-polish documentation, learning to ship when it's "clear enough."
+- Style notes: positive about JP Morgan (never bad-mouth it); frames the move as attraction to this role, not dissatisfaction; claims Product Owner WORK but title is Business Analyst.`;
+
+    /* ================= state ================= */
+    const el=id=>document.getElementById(id);
+    const dot=el("dot"),statusText=el("statusText"),answerEl=el("answer"),qlabel=el("qlabel"),
+        heard=el("heard"),banner=el("banner");
+    let apiKey=localStorage.getItem("ai_key")||"";
+    let workerUrl=localStorage.getItem("ai_worker")||"";
+    let model=localStorage.getItem("ai_model")||"gemini-2.0-flash";
+    let context=localStorage.getItem("ai_ctx")||DEFAULT_CONTEXT;
+    let qFilter=(localStorage.getItem("ai_filter")||"on")==="on";
+    let recog=null,running=false,wantRun=false,busy=false,lastAsked="",lastAskTime=0,currentAnswerText="";
+    const configured=()=>!!(workerUrl||apiKey);
+
+    /* ================= settings drawer ================= */
+    const drawer=el("drawer"),overlay=el("overlay");
+    function openSet(){ el("workerInput").value=workerUrl; el("keyInput").value=apiKey; el("modelSelect").value=model; el("ctxInput").value=context; el("filterSelect").value=qFilter?"on":"off"; drawer.classList.add("open"); overlay.classList.add("show"); }
+    function closeSet(){ drawer.classList.remove("open"); overlay.classList.remove("show"); }
+    el("setBtn").onclick=openSet; el("closeSet").onclick=closeSet; overlay.onclick=closeSet;
+    el("saveSet").onclick=()=>{
+        workerUrl=el("workerInput").value.trim().replace(/\/+$/,"");
+        apiKey=el("keyInput").value.trim(); model=el("modelSelect").value;
+        context=el("ctxInput").value.trim()||DEFAULT_CONTEXT; qFilter=el("filterSelect").value==="on";
+        localStorage.setItem("ai_worker",workerUrl);
+        localStorage.setItem("ai_key",apiKey); localStorage.setItem("ai_model",model);
+        localStorage.setItem("ai_ctx",context); localStorage.setItem("ai_filter",qFilter?"on":"off");
+        hideBanner(); closeSet();
+        setStatus(configured()?"paused":"err", configured()?"Saved — press Start or type a question.":"Add a Worker URL or key in ⚙.");
+    };
+    el("clearKey").onclick=()=>{ localStorage.removeItem("ai_key"); apiKey=""; el("keyInput").value=""; setStatus("err","Key cleared."); };
+
+    /* ================= font ================= */
+    let fontSize=window.matchMedia("(max-width:700px)").matches?28:36;
+    function applyFont(){ answerEl.style.fontSize=fontSize+"px"; el("fontVal").textContent=fontSize+"px"; }
+    el("fontUp").onclick=()=>{fontSize=Math.min(80,fontSize+3);applyFont();};
+    el("fontDown").onclick=()=>{fontSize=Math.max(16,fontSize-3);applyFont();};
+
+    function showBanner(m){banner.textContent=m;banner.classList.add("show");}
+    function hideBanner(){banner.classList.remove("show");}
+    function setStatus(s,t){dot.className="dot"+(s?" "+s:"");statusText.textContent=t;}
+
+    /* ================= Gemini streaming call ================= */
+    async function ask(question){
+        question=(question||"").trim();
+        if(!question) return;
+        if(!configured()){ showBanner("Add a Worker URL or a Gemini key in ⚙ Settings first."); openSet(); return; }
+        if(busy) return;
+        busy=true; lastAsked=question.toLowerCase(); lastAskTime=Date.now();
+        qlabel.textContent=question;
+        answerEl.classList.remove("placeholder");
+        answerEl.innerHTML='<span class="cursor">.</span>';
+        setStatus("think","Thinking…");
+        const url = workerUrl
+            ? workerUrl+"?model="+encodeURIComponent(model)
+            : "https://generativelanguage.googleapis.com/v1beta/models/"+encodeURIComponent(model)+":streamGenerateContent?alt=sse&key="+encodeURIComponent(apiKey);
+        const body={
+            system_instruction:{parts:[{text:context}]},
+            contents:[{role:"user",parts:[{text:question}]}],
+            generationConfig:{temperature:0.5,maxOutputTokens:500,topP:0.9}
+        };
+        try{
+            const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+            if(!res.ok){
+                let msg="Request failed ("+res.status+")";
+                try{ const e=await res.json(); if(e.error&&e.error.message) msg=e.error.message; }catch(_){}
+                answerEl.textContent="⚠ "+msg;
+                setStatus("err", res.status===400||res.status===403?"Key/model error — check ⚙ Settings.":"Error — see message.");
+                busy=false; return;
+            }
+            const reader=res.body.getReader(); const dec=new TextDecoder(); let buf="",out="";
+            while(true){
+                const {value,done}=await reader.read(); if(done) break;
+                buf+=dec.decode(value,{stream:true});
+                let i;
+                while((i=buf.indexOf("\n"))>=0){
+                    const line=buf.slice(0,i).trim(); buf=buf.slice(i+1);
+                    if(!line.startsWith("data:")) continue;
+                    const js=line.slice(5).trim(); if(!js||js==="[DONE]") continue;
+                    try{
+                        const o=JSON.parse(js);
+                        const t=o.candidates&&o.candidates[0]&&o.candidates[0].content&&o.candidates[0].content.parts&&o.candidates[0].content.parts[0]&&o.candidates[0].content.parts[0].text;
+                        if(t){ out+=t; answerEl.textContent=out; answerEl.scrollTop=answerEl.scrollHeight; }
+                    }catch(_){}
+                }
+            }
+            if(!out) answerEl.textContent="(no answer returned — try rephrasing)";
+            currentAnswerText=out;
+            setStatus(running?"live":"paused", running?"Listening… ask the next question.":"Done.");
+        }catch(err){
+            answerEl.textContent="⚠ Network error — check your connection.";
+            setStatus("err","Network error.");
+        }
+        busy=false;
+    }
+
+    /* ================= question filter (ignore answer-reading) ================= */
+    const Q_LEADS=["what","why","how","when","where","who","which","tell me","walk me","describe","explain","can you","could you","do you","did you","have you","are you","would you","give me","talk about","whats","what's","share","how do","how would","take me through","define"];
+    function looksLikeQuestion(t){
+        const s=t.trim().toLowerCase();
+        if(s.split(/\s+/).length<3) return false;
+        if(s.includes("?")) return true;
+        return Q_LEADS.some(k=>s.startsWith(k));
+    }
+    /* echo suppression: if most heard words appear in the answer on screen, you're reading it aloud */
+    function isEchoOfAnswer(t){
+        if(!currentAnswerText) return false;
+        const norm=x=>x.toLowerCase().replace(/[^a-z0-9\s']/g," ").split(/\s+/).filter(w=>w.length>2);
+        const ans=new Set(norm(currentAnswerText));
+        const ht=norm(t);
+        if(ht.length<3) return false;
+        let hit=0; ht.forEach(w=>{ if(ans.has(w)) hit++; });
+        return hit/ht.length>0.55;
+    }
+
+    /* ================= voice ================= */
+    const micBtn=el("micBtn");
+    function refreshMic(){ micBtn.textContent=running?"■ Stop":"▶ Start"; micBtn.className=running?"danger":"primary"; }
+    function start(){
+        const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+        if(!SR){ showBanner("Voice needs Chrome on desktop. On iPad, type your question below instead."); return; }
+        if(!configured()){ showBanner("Add a Worker URL or Gemini key in ⚙ Settings first."); openSet(); return; }
+        hideBanner();
+        recog=new SR(); recog.continuous=true; recog.interimResults=false; recog.lang="en-US";
+        recog.onstart=()=>{ running=true; setStatus("live","Listening… ask a question."); refreshMic(); };
+        recog.onerror=(ev)=>{
+            if(ev.error==="not-allowed"||ev.error==="service-not-allowed"){ wantRun=false; running=false; setStatus("err","Mic blocked — allow access."); showBanner("Allow the microphone, then press Start."); refreshMic(); }
+            else if(ev.error==="network"){ setStatus("err","Network error — voice needs internet."); }
+        };
+        recog.onresult=(ev)=>{
+            const r=ev.results[ev.results.length-1]; if(!r.isFinal) return;
+            const txt=r[0].transcript.trim();
+            const low=txt.toLowerCase();
+            if(["stop the session","stop session","stop listening","end session"].some(c=>low.includes(c))){ stop(); return; }
+            if(busy) return;
+            if(isEchoOfAnswer(txt)){ heard.innerHTML='Heard: <b>'+txt+'</b> <span style="color:var(--muted)">— (you\'re answering; holding)</span>'; return; }
+            heard.innerHTML='Heard: <b>'+txt+'</b>';
+            if(qFilter && !looksLikeQuestion(txt)){ heard.innerHTML='Heard: <b>'+txt+'</b> <span style="color:var(--muted)">— (not a question; holding)</span>'; return; }
+            if(low===lastAsked && Date.now()-lastAskTime<4000) return;      // debounce repeats
+            ask(txt);
+        };
+        recog.onend=()=>{ running=false; if(wantRun){ try{recog.start();}catch(e){ setTimeout(()=>{ if(wantRun) try{recog.start()}catch(_){}} ,300);} } else { setStatus(configured()?"paused":"err","Stopped."); refreshMic(); } };
+        wantRun=true; try{recog.start();}catch(e){}
+    }
+    function stop(){ wantRun=false; running=false; if(recog){try{recog.stop();}catch(e){}} setStatus("paused","Stopped."); refreshMic(); heard.innerHTML="Session ended."; }
+    micBtn.onclick=()=>{ running?stop():start(); };
+
+    /* ================= manual ask ================= */
+    el("askBtn").onclick=()=>{ const q=el("askInput").value.trim(); if(q){ ask(q); el("askInput").value=""; } };
+    el("askInput").addEventListener("keydown",e=>{ if(e.key==="Enter"){ const q=el("askInput").value.trim(); if(q){ ask(q); el("askInput").value=""; } } });
+
+    /* ================= init ================= */
+    applyFont();
+    if(!configured()){ showBanner("First time: open ⚙ Settings and add your Worker URL (recommended) or a free Gemini key."); setStatus("err","Not configured — open ⚙."); }
+    else setStatus("paused","Ready — press Start or type a question.");
+</script>
+</body>
+</html>
