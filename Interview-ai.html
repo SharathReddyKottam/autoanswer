@@ -154,6 +154,7 @@ PROFILE
     el("setBtn").onclick=openSet; el("closeSet").onclick=closeSet; overlay.onclick=closeSet;
     el("saveSet").onclick=()=>{
         workerUrl=el("workerInput").value.trim().replace(/\/+$/,"");
+        if(workerUrl && !/^https?:\/\//i.test(workerUrl)) workerUrl="https://"+workerUrl;
         apiKey=el("keyInput").value.trim(); model=el("modelSelect").value;
         context=el("ctxInput").value.trim()||DEFAULT_CONTEXT; qFilter=el("filterSelect").value==="on";
         localStorage.setItem("ai_worker",workerUrl);
